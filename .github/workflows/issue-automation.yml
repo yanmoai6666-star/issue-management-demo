@@ -1,20 +1,42 @@
-name: Issue Management Automation
+name: Issue Automation Workflow
 
+# 触发条件：当有新Issue被创建时
 on:
   issues:
-    types: [opened, edited]
+    types: [opened]
 
 jobs:
   process-issue:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Process issue based on type
-        uses: actions/github-script@v6
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            // 这里需要编写JavaScript代码来处理不同类型的Issue
-            // 包括应用标签、设置里程碑、添加评论和创建子任务
+      - name: 识别Issue类型并处理
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # 内置令牌，需开启仓库权限
+        run: |
+          # 获取Issue标题和编号
+          ISSUE_TITLE="${{ github.event.issue.title }}"
+          ISSUE_NUMBER="${{ github.event.issue.number }}"
+          
+          # 处理Bug类型Issue
+          if [[ $ISSUE_TITLE == "Bug: 登录页面加载失败 - 内存溢出问题" ]]; then
+            # 添加标签
+            gh issue edit $ISSUE_NUMBER --add-label "bug,high-priority,in-progress"
+            # 设置里程碑
+            gh issue edit $ISSUE_NUMBER --milestone "v2.1.0"
+            # 添加自动评论
+            gh issue comment $ISSUE_NUMBER --body "Bug Report Guidelines"
+          fi
+          
+          # 处理Epic类型Issue
+          if [[ $ISSUE_TITLE == "Epic: 数据可视化仪表盘功能增强" ]]; then
+            gh issue edit $ISSUE_NUMBER --add-label "epic,medium-priority,planned"
+            gh issue edit $ISSUE_NUMBER --milestone "v2.2.0"
+            gh issue comment $ISSUE_NUMBER --body "Feature Request Process"
+          fi
+          
+          # 处理维护类型Issue
+          if [[ $ISSUE_TITLE == "Maintenance: 文档结构优化与更新" ]]; then
+            gh issue edit $ISSUE_NUMBER --add-label "maintenance,low-priority,pending"
+            gh issue edit $ISSUE_NUMBER --remove-milestone  # 移除里程碑（无关联）
+            gh issue comment $ISSUE_NUMBER --body "Maintenance Guidelines"
+          fi
