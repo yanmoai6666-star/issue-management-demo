@@ -1,0 +1,20 @@
+name: Issue Management Automation
+
+on:
+  issues:
+    types: [opened, edited]
+
+jobs:
+  process-issue:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Process issue based on type
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            // 这里需要编写JavaScript代码来处理不同类型的Issue
+            // 包括应用标签、设置里程碑、添加评论和创建子任务
