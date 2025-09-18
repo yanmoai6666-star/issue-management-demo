@@ -1,42 +1,51 @@
-name: Issue Automation Workflow
+name: Issue Management Automation
 
-# 触发条件：当有新Issue被创建时
 on:
   issues:
-    types: [opened]
+    types: [opened, edited, labeled]
 
 jobs:
   process-issue:
     runs-on: ubuntu-latest
     steps:
-      - name: 识别Issue类型并处理
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # 内置令牌，需开启仓库权限
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Process Bug Report
+        if: |
+          contains(github.event.issue.labels.*.name, 'bug') && 
+          github.event.action == 'opened'
         run: |
-          # 获取Issue标题和编号
-          ISSUE_TITLE="${{ github.event.issue.title }}"
-          ISSUE_NUMBER="${{ github.event.issue.number }}"
-          
-          # 处理Bug类型Issue
-          if [[ $ISSUE_TITLE == "Bug: 登录页面加载失败 - 内存溢出问题" ]]; then
-            # 添加标签
-            gh issue edit $ISSUE_NUMBER --add-label "bug,high-priority,in-progress"
-            # 设置里程碑
-            gh issue edit $ISSUE_NUMBER --milestone "v2.1.0"
-            # 添加自动评论
-            gh issue comment $ISSUE_NUMBER --body "Bug Report Guidelines"
-          fi
-          
-          # 处理Epic类型Issue
-          if [[ $ISSUE_TITLE == "Epic: 数据可视化仪表盘功能增强" ]]; then
-            gh issue edit $ISSUE_NUMBER --add-label "epic,medium-priority,planned"
-            gh issue edit $ISSUE_NUMBER --milestone "v2.2.0"
-            gh issue comment $ISSUE_NUMBER --body "Feature Request Process"
-          fi
-          
-          # 处理维护类型Issue
-          if [[ $ISSUE_TITLE == "Maintenance: 文档结构优化与更新" ]]; then
-            gh issue edit $ISSUE_NUMBER --add-label "maintenance,low-priority,pending"
-            gh issue edit $ISSUE_NUMBER --remove-milestone  # 移除里程碑（无关联）
-            gh issue comment $ISSUE_NUMBER --body "Maintenance Guidelines"
-          fi
+          echo "Processing bug report #${{ github.event.issue.number }}"
+          # 添加评论
+          curl -X POST \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/comments \
+            -d '{"body":"### Bug Report Guidelines\n\nPlease ensure you include:\n1. Steps to reproduce\n2. Expected behavior\n3. Actual behavior\n4. Screenshots if applicable\n5. Environment details"}'
+
+      - name: Process Feature Request
+        if: |
+          contains(github.event.issue.labels.*.name, 'epic') && 
+          github.event.action == 'opened'
+        run: |
+          echo "Processing feature request #${{ github.event.issue.number }}"
+          # 添加评论
+          curl -X POST \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/comments \
+            -d '{"body":"### Feature Request Process\n\nThis epic will be broken down into subtasks. Please ensure each subtask references this parent issue."}'
+
+      - name: Process Maintenance Request
+        if: |
+          contains(github.event.issue.labels.*.name, 'maintenance') && 
+          github.event.action == 'opened'
+        run: |
+          echo "Processing maintenance request #${{ github.event.issue.number }}"
+          # 添加评论
+          curl -X POST \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/comments \
+            -d '{"body":"### Maintenance Guidelines\n\nPlease provide:\n1. Documentation sections to update\n2. Proposed structure changes\n3. Content recommendations"}'
